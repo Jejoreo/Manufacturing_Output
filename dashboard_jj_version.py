@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import statsmodels.api as sm
+import plotly.graph_objects as go
 
 st.set_page_config(
     page_title= "Manufacturing Output Viewer",
@@ -119,10 +120,26 @@ def filter_data(df):
 
 def generate_plot(df, plot_type, data_mean, y_code:str, plot_title:str, data_target:int, x_code="Date"):
     if plot_type == "line":
-        fig = px.line(df, x=x_code, y=y_code, title=plot_title, color_discrete_sequence=["darkgoldenrod"])        
-        fig.add_hline(y=data_mean, line_dash="dash", line_color="red", annotation_text=f'Average: {data_mean}', annotation_position="top right", annotation_font_color="black")
-        fig.add_hline(y=data_target, line_dash="dash", line_color="green", annotation_text=f"Target: {data_target}", annotation_position="top right", annotation_font_color="black")
-        fig.update_layout(xaxis=dict(tickmode='auto', dtick='M1', tickformat='%Y-%m-%d'))
+        # Create scatter plot with trendline
+        fig_scatter = px.scatter(df, x=x_code, y=y_code, title=plot_title, trendline='ols', 
+                                trendline_color_override="black", color=y_code, 
+                                color_continuous_scale="Viridis", color_continuous_midpoint=8, render_mode="svg", 
+                                hover_name=x_code)
+
+        # Create line plot with horizontal lines
+        fig_line = px.line(df, x=x_code, y=y_code, title=plot_title, markers=False, color_discrete_sequence=["royalblue"], width= 10)        
+        fig_line.add_hline(y=data_mean, line_dash="dash", line_color="red", annotation_text=f'Average: {data_mean}', annotation_position="top right", annotation_font_color="black")
+        fig_line.add_hline(y=data_target, line_dash="dash", line_color="green", annotation_text=f"Target: {data_target}", annotation_position="top right", annotation_font_color="black")
+        fig_line.update_layout(xaxis=dict(tickmode='auto', dtick='M1', tickformat='%Y-%m-%d'))
+
+        # Extract the traces from fig_line and convert them to tuples
+        line_traces = tuple(fig_line.data)
+
+        # Create a trendline trace from fig_scatter
+        trendline_trace = fig_scatter.data[1]
+
+        # Concatenate the traces and create a new figure
+        fig = go.Figure(data=line_traces + (trendline_trace,), layout=fig_line.layout)
     elif plot_type == "bar":
         fig = px.bar(df, x=x_code, y=y_code, title=plot_title, color_discrete_sequence=["lightpink"])
         fig.add_hline(y=data_mean, line_dash="dash", line_color="red", annotation_text=f'Average: {data_mean}', annotation_position="top right", annotation_font_color="black")
